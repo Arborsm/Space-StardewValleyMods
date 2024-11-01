@@ -13,6 +13,7 @@ using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
 using StardewValley.BellsAndWhistles;
+using StardewValley.ItemTypeDefinitions;
 using StardewValley.Locations;
 using StardewValley.Menus;
 using tlitookilakin.HDPortraits;
@@ -41,7 +42,6 @@ namespace BetterShopMenu
         private Dictionary<int, string> CategoryNames;
         internal bool ChestsAnywhereActive;
         internal IChestsAnywhereApi ChestsAnywhereApi;
-        private Dictionary<int, string> CropData;
         private int CurrCategory;
         internal bool CustomBackpackFramework;
         private bool FirstTick;
@@ -218,10 +218,7 @@ namespace BetterShopMenu
             InitialItems = Shop.forSale;
             InitialStock = Shop.itemPriceAndStock;
 
-            CropData = null;
             HaveStockList = Game1.MasterPlayer.hasOrWillReceiveMail("PierreStocklist");
-            if (HaveStockList)
-                CropData = Game1.content.Load<Dictionary<int, string>>("Data\\Crops");
 
             RightClickDown = false;
             PurchaseCountdown = -1;
@@ -292,12 +289,10 @@ namespace BetterShopMenu
         {
             if (!HaveStockList || item is not Item thisItem)
                 return true;
-            int seedIndex = thisItem.ParentSheetIndex;
-
-            if (!CropData.ContainsKey(seedIndex))
-                return inSeason; //have this stuff show in the in season list. saplings are like this.
-            string[] split = CropData[seedIndex].Split('/');
-            return split[1].Contains(Game1.currentSeason, StringComparison.OrdinalIgnoreCase) == inSeason;
+            ItemMetadata metadata = ItemRegistry.GetMetadata(item.QualifiedItemId);
+            if (Crop.TryGetData(metadata.LocalItemId, out var cropData))
+                return cropData.Seasons.Contains(Game1.season) == inSeason;
+            return inSeason;
         }
 
         private bool ItemMatchesCategory(ISalable item, int cat)
@@ -858,7 +853,6 @@ namespace BetterShopMenu
                 return;
             Log.Trace("Closing shop menu.");
             Shop = null;
-            CropData = null;
 
             if (Search != null)
             {
